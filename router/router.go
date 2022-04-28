@@ -12,58 +12,53 @@ var (
 	WatcherRouter *gin.Engine
 )
 
-type ReqParam struct {
-	Operation string `json:"operation"`
-	policies [][]string `json:"policies"`
-}
-
-type ReadReq struct {
-	policy []string `json:"policy"`
-}
-
 func InitRouter() {
 	WatcherRouter = gin.Default()
 	WatcherRouter.GET("/", func(c *gin.Context) {
 		c.String(http.StatusOK, "ok")
 	})
-	WatcherRouter.POST("policies/operation", func(context *gin.Context) {
-		var req ReqParam
-		err := context.ShouldBindJSON(&req)
+	WatcherRouter.PUT("/policies", func(context *gin.Context) {
+		var data interface{}
+		context.ShouldBindJSON(&data)
+		err := context.ShouldBindJSON(&data)
 		if err != nil {
-			log.Println("ShouldBindJSON error:", err)
-			context.JSON(http.StatusOK,"params error")
+			http.Error(context.Writer, err.Error(), http.StatusBadRequest)
 			return
 		}
-		if req.Operation == "add" {
-			ok, err := casbin.GetEnforcer().ModifyBatchPolicies(casbin.GetEnforcer().AddPolicies, req.policies)
-			if !ok || err != nil {
-				log.Println("AddPolicies error:", err)
-				context.JSON(http.StatusOK,"add policies error")
-				return
-			}
-		} else if req.Operation == "remove" {
-			ok, err := casbin.GetEnforcer().ModifyBatchPolicies(casbin.GetEnforcer().RemovePolicies, req.policies)
-			if !ok || err != nil {
-				log.Println("RemovePolicies error:", err)
-				context.JSON(http.StatusOK,"add policies error")
-				return
-			}
+
+		_, err = casbin.GetEnforcer().AddPolicies(casbin.Interface2rules(data))
+		if err != nil {
+			http.Error(context.Writer, err.Error(), http.StatusServiceUnavailable)
+			return
 		}
-		context.JSON(http.StatusOK,"success")
 	})
-	WatcherRouter.GET("policies/read", func(context *gin.Context) {
-		var req ReadReq
-		err := context.ShouldBindJSON(&req)
+	WatcherRouter.DELETE("/policies",func(context *gin.Context) {
+		var data interface{}
+		context.ShouldBindJSON(&data)
+		err := context.ShouldBindJSON(&data)
 		if err != nil {
-			log.Println("ShouldBindJSON error:", err)
-			context.JSON(http.StatusOK,"params error")
+			http.Error(context.Writer, err.Error(), http.StatusBadRequest)
 			return
 		}
-		ok,err := casbin.GetEnforcer().WEnforce(req.policy)
-		if ok || err == nil {
-			context.JSON(http.StatusOK,"success")
+
+		_, err = casbin.GetEnforcer().RemovePolicy(casbin.Interface2rules(data))
+		if err != nil {
+			http.Error(context.Writer, err.Error(), http.StatusServiceUnavailable)
+			return
 		}
-		context.JSON(http.StatusForbidden,"you have not auth")
+	})
+	WatcherRouter.GET("/enforcer",func(context *gin.Context) {
+		var data []interface{}
+		err := context.ShouldBindJSON(&data)
+		if err != nil {
+			http.Error(context.Writer, err.Error(), http.StatusBadRequest)
+			return
+		}
+		ok,err := casbin.GetEnforcer().WEnforce(data...)
+		if ok || err == nil {
+			context.JSON(http.StatusOK,"Authorized")
+		}
+		context.JSON(http.StatusBadRequest,"Unauthorized")
 	})
 	if err := WatcherRouter.Run(config.WatcherConfig.ListenPort); err != nil {
 		log.Fatalln("Run error:", err)

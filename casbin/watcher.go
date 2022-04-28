@@ -41,7 +41,7 @@ func updateCallback(msg string) {
 		return
 	}
 	if m.Method == "UpdateForAddPolicies" {
-		rules := interface2rules(m.Params)
+		rules := Interface2rules(m.Params)
 		log.Println("update rules:", rules)
 		if m.Sec == m.Ptype && m.Sec == "p" {
 			ok, err := globalEnforcer.AddPolicies(rules)
@@ -57,7 +57,7 @@ func updateCallback(msg string) {
 			log.Println("type error: ", m.Ptype)
 		}
 	} else if m.Method == "UpdateForRemovePolicies" {
-		rules := interface2rules(m.Params)
+		rules := Interface2rules(m.Params)
 		log.Println("update rules:", rules)
 		if m.Sec == m.Ptype && m.Sec == "p" {
 			ok, err := globalEnforcer.RemovePolicies(rules)
@@ -77,7 +77,7 @@ func updateCallback(msg string) {
 	}
 }
 
-func interface2rules(i interface{}) [][]string {
+func Interface2rules(i interface{}) [][]string {
 	rules := make([][]string, 0)
 	for _, item := range i.([]interface{}) {
 		tmp := item.([]interface{})
